@@ -84,7 +84,7 @@ class RobotRss(object):
             update.message.reply_text(message)
             return
 
-        arg_url = FeedHandler.format_url_string(string=args[0])
+        arg_url = args[0]
         arg_entry = args[1]
 
         # Check if argument matches url format
@@ -96,7 +96,6 @@ class RobotRss(object):
 
         # Check if entry does not exists
         entries = self.db.get_urls_for_user(telegram_id=telegram_user.id)
-        print(entries)
 
         if any(arg_url.lower() in entry for entry in entries):
             message = "Sorry, " + telegram_user.first_name + \

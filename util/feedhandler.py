@@ -1,5 +1,6 @@
 import feedparser
 import re
+from urllib.parse import urlparse
 
 
 class FeedHandler(object):
@@ -23,32 +24,16 @@ class FeedHandler(object):
         Checks wether the given url provides a news feed. Return True if news are available, else False
         """
 
-        url_pattern = re.compile("((http(s?))):\/\/.*")
-        if not url_pattern.match(url):
+        parsed_url = urlparse(url)
+        if (parsed_url.scheme != "http" and parsed_url.scheme != "https") or not parsed_url.netloc or not parsed_url.path:
             return False
 
         feed = feedparser.parse(url)
 
-        # Check if result is empty
-        if not feed.entries:
-            return False
-        # Check if entries provide updated attribute
-        for post in feed.entries:
-            if not hasattr(post, "updated"):
+        if f['bozo']
+            if type(f['bozo_exception']) == 'urllib.error.URLError':
                 return False
+            # Check JSON Feed
+            return False    # For now just not supported, so return False
+
         return True
-
-    @staticmethod
-    def format_url_string(string):
-        """
-        Formats a given url as string so it matches http(s)://adress.domain.
-        This should be called before parsing the url, to make sure it is parsable
-        """
-
-        string = string.lower()
-
-        url_pattern = re.compile("((http(s?))):\/\/.*")
-        if not url_pattern.match(string):
-            string = "http://" + string
-
-        return string
