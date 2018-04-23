@@ -1,5 +1,6 @@
 resources/credentials.json
 resources/userdata/*
+venv
 *.pyc
 *.db
 !resources/sample-credentials.json
