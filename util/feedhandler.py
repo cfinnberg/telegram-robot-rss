@@ -30,8 +30,8 @@ class FeedHandler(object):
 
         feed = feedparser.parse(url)
 
-        if f['bozo']
-            if type(f['bozo_exception']) == 'urllib.error.URLError':
+        if feed['bozo']:
+            if type(feed['bozo_exception']) == 'urllib.error.URLError':         # No connection to site
                 return False
             # Check JSON Feed
             return False    # For now just not supported, so return False
