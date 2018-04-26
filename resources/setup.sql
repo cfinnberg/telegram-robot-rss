@@ -1,5 +1,5 @@
 CREATE TABLE web (
-	url varchar PRIMARY KEY NOT NULL UNIQUE,
+	url varchar PRIMARY KEY NOT NULL UNIQUE COLLATE NOCASE,
 	last_updated timestamp
 );
 
@@ -14,9 +14,9 @@ CREATE TABLE user (
 );
 
 CREATE TABLE web_user (
-	url varchar NOT NULL,
+	url varchar NOT NULL COLLATE NOCASE,
 	telegram_id integer NOT NULL,
-	alias varchar NOT NULL,
+	alias varchar NOT NULL COLLATE NOCASE,
 	FOREIGN KEY(url) REFERENCES web(url),
 	FOREIGN KEY(telegram_id) REFERENCES user(telegram_id)
 );

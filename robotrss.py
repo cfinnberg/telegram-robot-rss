@@ -7,6 +7,8 @@ from util.filehandler import FileHandler
 from util.database import DatabaseHandler
 from util.processing import BatchProcess
 from util.feedhandler import FeedHandler
+from util.datehandler import DateHandler
+from cityhash import CityHash64
 
 
 class RobotRss(object):
@@ -88,30 +90,40 @@ class RobotRss(object):
         arg_entry = args[1]
 
         # Check if argument matches url format
-        if not FeedHandler.is_parsable(url=arg_url):
-            message = "Sorry! It seems like '" + \
-                str(arg_url) + "' doesn't provide an RSS news feed.. Have you tried another URL from that provider?"
+        feed=FeedHandler.is_parsable(url=arg_url)
+        if not feed:
+            message = f"Sorry! It seems like {arg_url}" + \
+                "' doesn't provide an RSS news feed... Have you tried another URL from that provider?"
             update.message.reply_text(message)
             return
 
         # Check if entry does not exists
         entries = self.db.get_urls_for_user(telegram_id=telegram_user.id)
-
-        if any(arg_url.lower() in entry for entry in entries):
-            message = "Sorry, " + telegram_user.first_name + \
-                "! I already have that url with stored in your subscriptions."
+        if any(arg_url.lower() in entry.lower() for entry,_ in entries):
+            message = f"Sorry, {telegram_user.first_name}" + \
+                "! I already have that url stored in your subscriptions."
             update.message.reply_text(message)
             return
 
         if any(arg_entry in entry for entry in entries):
-            message = "Sorry! I already have an entry with name " + \
-                arg_entry + " stored in your subscriptions.. Please choose another entry name or delete the entry using '/remove " + arg_entry + "'"
+            message = f"Sorry! I already have an entry with name {arg_entry}" + \
+                " stored in your subscriptions.. Please choose another entry name or delete the entry using '/remove {arg_entry}'"
             update.message.reply_text(message)
             return
 
-        self.db.add_user_bookmark(
-            telegram_id=telegram_user.id, url=arg_url.lower(), alias=arg_entry)
-        message = "I successfully added " + arg_entry + " to your subscriptions!"
+        urls = self.db.get_all_urls()
+        if not (arg_url in urls):
+            items = {}
+            for item in feed:
+                for key in ['summary', 'title', 'link']:
+                    if not(key in item.keys()):
+                        item[key]=''
+                hash=CityHash64(item['summary']+item['title']+item['link'])
+                items[hash] = {'active': True, 'last_date': DateHandler.get_datetime_now()}
+            self.db.add_url(url=arg_url, items=items)
+
+        self.db.add_user_bookmark(telegram_id=telegram_user.id, url=arg_url, alias=arg_entry)
+        message = f"I successfully added {arg_entry} to your subscriptions!"
         update.message.reply_text(message)
 
     def get(self, bot, update, args):
@@ -133,8 +145,13 @@ class RobotRss(object):
             args_entry = args[0]
             args_count = 4
 
-        url = self.db.get_user_bookmark(
-            telegram_id=telegram_user.id, alias=args_entry)
+        if not(1 <= args_count <= 10):
+            message = "Count parameter (if used) must be between 1 and 10.\n" + \
+                "Usage: /get <entryname> [optional: <count 1-10>]"
+            update.message.reply_text(message)
+            return
+
+        url = self.db.get_user_bookmark(telegram_id=telegram_user.id, alias=args_entry)
 
         if url is None:
             message = "I can not find an entry with label " + \
@@ -144,8 +161,7 @@ class RobotRss(object):
 
         entries = FeedHandler.parse_feed(url[0], args_count)
         for entry in entries:
-            message = "[" + url[1] + "] <a href='" + \
-                entry.link + "'>" + entry.title + "</a>"
+            message = f"[{url[1]}] <a href='{entry.link}'>{entry.title}</a>"
             print(message)
 
             try:
@@ -194,7 +210,7 @@ class RobotRss(object):
         entries = self.db.get_urls_for_user(telegram_id=telegram_user.id)
 
         for entry in entries:
-            message = "[" + entry[1] + "]\n " + entry[0]
+            message = f"[{entry[1]}]\n {entry[0]}"
             update.message.reply_text(message)
 
     def help(self, bot, update):

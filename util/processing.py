@@ -11,6 +11,7 @@ import datetime
 import threading
 import traceback
 from time import sleep
+from cityhash import CityHash64
 
 
 class BatchProcess(threading.Thread):
@@ -49,39 +50,58 @@ class BatchProcess(threading.Thread):
               " rss feeds in " + str(duration) + " !")
 
     def update_feed(self, url):
+        try:
+            feed = FeedHandler.parse_feed(url[0])
+        except:
+            feed = False
+            traceback.print_exc() # ???
+        
+        if feed:
+            print(f'{url[0]}:')
+            print(f'Longitud de feed: {len(feed)}')
+            url_items = self.db.get_url_items(url=url[0])
+            for item in url_items:
+                 url_items[item]['active'] = False
+
+            new_items = []
+            for item in feed:
+                hash=str(CityHash64(item['summary']+item['title']+item['link']))
+                if not(hash in url_items):
+                    new_items.append(item)
+                url_items[hash] = {'active': True, 'last_date': DateHandler.get_datetime_now()}
+
+            for item,value in url_items.copy().items():
+                if not value['active']:
+                    print(f'Desactivando {item}')
+                if not value['active'] and DateHandler.is_older_than_days(value['last_date'],5):
+                    print(f'Borrando {item}')
+                    url_items.pop(item)
+
+            self.db.update_url_items(url=url[0],items=url_items)
+
         telegram_users = self.db.get_users_for_url(url=url[0])
 
         for user in telegram_users:
             if user[6]:  # is_active
-                try:
-                    for post in FeedHandler.parse_feed(url[0]):
-                        self.send_newest_messages(
-                            url=url, post=post, user=user)
-                except:
-                    traceback.print_exc()
+                if not feed:
                     message = "Something went wrong when I tried to parse the URL: \n\n " + \
                         url[0] + "\n\nCould you please check that for me? Remove the url from your subscriptions using the /remove command, it seems like it does not work anymore!"
-                    self.bot.send_message(
-                        chat_id=user[0], text=message, parse_mode=ParseMode.HTML)
+                    self.bot.send_message(chat_id=user[0], text=message, parse_mode=ParseMode.HTML)
+                    return
 
-        self.db.update_url(url=url[0], last_updated=str(
-            DateHandler.get_datetime_now()))
+                for post in new_items:
+                    self.send_message(post=post, user=user)
 
-    def send_newest_messages(self, url, post, user):
-        post_update_date = DateHandler.parse_datetime(datetime=post.updated)
-        url_update_date = DateHandler.parse_datetime(datetime=url[1])
+    def send_message(self, post, user):
 
-        if post_update_date > url_update_date:
-            message = "[" + user[7] + "] <a href='" + post.link + \
-                "'>" + post.title + "</a>"
-            try:
-                self.bot.send_message(
-                    chat_id=user[0], text=message, parse_mode=ParseMode.HTML)
-            except Unauthorized:
-                self.db.update_user(telegram_id=user[0], is_active=0)
-            except TelegramError:
-                # handle all other telegram related errors
-                pass
+        message = "[" + user[7] + "] <a href='" + post.link + "'>" + post.title + "</a>"
+        try:
+            self.bot.send_message(chat_id=user[0], text=message, parse_mode=ParseMode.HTML)
+        except Unauthorized:
+            self.db.update_user(telegram_id=user[0], is_active=0)
+        except TelegramError:
+            # handle all other telegram related errors
+            pass
 
     def set_running(self, running):
         self.running = running

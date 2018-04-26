@@ -6,17 +6,17 @@ from urllib.parse import urlparse
 class FeedHandler(object):
 
     @staticmethod
-    def parse_feed(url, entries=0):
+    def parse_feed(url, entries=500):
         """
         Parses the given url, returns a list containing all available entries
         """
+        feed = feedparser.parse(url)
+        for item in feed.entries:
+            for key in ['summary', 'title', 'link']:
+                if not(key in item.keys()):
+                    item[key]=''
 
-        if 1 <= entries <= 10:
-            feed = feedparser.parse(url)
-            return feed.entries[:entries]
-        else:
-            feed = feedparser.parse(url)
-            return feed.entries[:4]
+        return feed.entries[:entries]
 
     @staticmethod
     def is_parsable(url):
@@ -36,4 +36,9 @@ class FeedHandler(object):
             # Check JSON Feed
             return False    # For now just not supported, so return False
 
-        return True
+        for item in feed.entries:
+            for key in ['summary', 'title', 'link']:
+                if not(key in item.keys()):
+                    item[key]=''
+
+        return feed.entries

@@ -1,29 +1,15 @@
-import pytz
-import datetime
-from dateutil import parser
+from datetime import datetime as dt
+from datetime import timezone as tz
+from datetime import timedelta
 
 
 class DateHandler:
 
     @staticmethod
     def get_datetime_now():
-
-        # Strip seconds from datetime
-        datestring = str(
-            datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
-        naive_date = datetime.datetime.utcnow().strptime(datestring, "%Y-%m-%d %H:%M:%S")
-
-        # Make datetime aware of timezone
-        aware_date = pytz.utc.localize(naive_date)
-        result = aware_date.astimezone(pytz.timezone("Europe/Berlin"))
-        return result
+        return dt.now(tz.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
     @staticmethod
-    def parse_datetime(datetime):
-        result = parser.parse(datetime)
-
-        if result.tzinfo is None:
-            aware_date = pytz.utc.localize(result)
-            result = aware_date.astimezone(pytz.timezone("Europe/Berlin"))
-
-        return result
+    def is_older_than_days(date, days):
+        delta=timedelta(days)
+        return dt.strptime(date,"%Y%m%dT%H%M%S%fZ")+delta < dt.now()
